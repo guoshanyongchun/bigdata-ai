@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>什么是 LLM Context（上下文）？用短期记忆类比理解</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5fb;
+    --card: #ffffff;
+    --primary: #db2777;        /* 玫红，与系列前两张区分 */
+    --primary-dark: #be185d;
+    --primary-light: #fce7f3;
+    --accent: #8b5cf6;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 4px 20px rgba(219, 39, 119, 0.08);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hero {
+    background: linear-gradient(135deg, #db2777 0%, #a855f7 50%, #6366f1 100%);
+    color: white; padding: 64px 24px 56px; text-align: center;
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3); padding: 4px 14px;
+    border-radius: 999px; font-size: 13px; margin-bottom: 18px;
+    backdrop-filter: blur(8px);
+  }
+  .hero h1 { font-size: 36px; font-weight: 700; margin-bottom: 12px; letter-spacing: 0.5px; }
+  .hero .sub { font-size: 16px; opacity: 0.92; max-width: 700px; margin: 0 auto; }
+
+  .container { max-width: 880px; margin: -32px auto 64px; padding: 0 20px; }
+
+  .card {
+    background: var(--card); border-radius: 16px; padding: 32px;
+    margin-bottom: 22px; box-shadow: var(--shadow); border: 1px solid var(--border);
+  }
+  .card h2 {
+    font-size: 22px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card h2 .icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px; background: var(--primary-light);
+  }
+  .card p { margin-bottom: 12px; color: #374151; }
+  .card p:last-child { margin-bottom: 0; }
+
+  .def-card {
+    background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 100%);
+    border: 1px solid #f9a8d4;
+    padding: 28px 32px;
+  }
+  .def-card .def-label {
+    font-size: 13px; color: var(--primary-dark); font-weight: 600;
+    letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .def-card .def-text { font-size: 19px; font-weight: 600; }
+
+  /* Memory analogy grid */
+  .memory-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+  }
+  .memory-grid .box {
+    padding: 20px; border-radius: 12px;
+  }
+  .memory-grid .brain {
+    background: #fce7f3; border: 1px solid #f9a8d4;
+  }
+  .memory-grid .llm {
+    background: #ede9fe; border: 1px solid #c4b5fd;
+  }
+  .memory-grid .box h4 { margin-bottom: 8px; font-size: 16px; }
+  .memory-grid .brain h4 { color: var(--primary-dark); }
+  .memory-grid .llm h4 { color: #6d28d9; }
+  .memory-grid .box p { font-size: 14px; margin: 0; color: #374151; }
+  @media (max-width: 640px) { .memory-grid { grid-template-columns: 1fr; } }
+
+  /* Token bar */
+  .token-bar {
+    background: #fafafa; border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; margin-top: 14px;
+  }
+  .token-bar .label {
+    font-size: 13px; color: var(--muted); margin-bottom: 8px; font-weight: 600;
+  }
+  .token-bar .bar {
+    height: 22px; background: #e5e7eb; border-radius: 6px; overflow: hidden;
+    display: flex;
+  }
+  .token-bar .bar .seg {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 11px; font-weight: 600;
+  }
+  .token-bar .bar .sys { background: #6366f1; }
+  .token-bar .bar .usr { background: #8b5cf6; }
+  .token-bar .bar .tool { background: #ec4899; }
+  .token-bar .legend {
+    display: flex; gap: 16px; margin-top: 10px; font-size: 12.5px; color: var(--muted);
+  }
+  .token-bar .legend span::before {
+    content: ""; display: inline-block; width: 10px; height: 10px;
+    border-radius: 2px; margin-right: 5px; vertical-align: middle;
+  }
+  .token-bar .legend .sys-c::before { background: #6366f1; }
+  .token-bar .legend .usr-c::before { background: #8b5cf6; }
+  .token-bar .legend .tool-c::before { background: #ec4899; }
+
+  .scenes { list-style: none; margin-top: 8px; }
+  .scenes li {
+    padding: 12px 0 12px 36px; position: relative;
+    border-bottom: 1px dashed var(--border);
+  }
+  .scenes li:last-child { border-bottom: none; }
+  .scenes li::before {
+    content: ""; position: absolute; left: 0; top: 18px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--primary-light); border: 2px solid var(--primary);
+  }
+  .scenes li::after {
+    content: ""; position: absolute; left: 9px; top: 24px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
+  }
+  .scenes b { color: var(--primary-dark); }
+
+  .confusion-card {
+    background: #fdf4ff; border: 1px solid #e9d5ff; border-radius: 12px;
+    padding: 18px 22px; margin-bottom: 12px;
+  }
+  .confusion-card .q { font-weight: 700; color: #6b21a8; margin-bottom: 6px; font-size: 15px; }
+  .confusion-card .a { font-size: 14px; color: #374151; }
+  .confusion-card .a b { color: var(--primary-dark); }
+
+  .sources li {
+    list-style: none; padding: 10px 0 10px 28px; position: relative;
+    border-bottom: 1px dashed var(--border); font-size: 14px;
+  }
+  .sources li:last-child { border-bottom: none; }
+  .sources li::before { content: "🔗"; position: absolute; left: 0; top: 8px; }
+  .sources a { color: var(--primary-dark); text-decoration: none; word-break: break-all; }
+  .sources a:hover { text-decoration: underline; }
+  .sources .meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+  .quote {
+    text-align: center; font-size: 17px; color: var(--primary-dark); font-weight: 600;
+    padding: 18px 0 6px; border-top: 1px dashed var(--border); margin-top: 18px;
+  }
+  .gen-note {
+    background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 100%);
+    border: 1px solid #f9a8d4; border-radius: 10px;
+    padding: 12px 18px; margin-top: 16px; font-size: 12.5px; color: var(--primary-dark);
+  }
+  .footer { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="badge">概念学习卡片 · 系列第 ② 期</div>
+  <h1>什么是 LLM Context？</h1>
+  <p class="sub">把大模型的"上下文窗口"理解成你此刻能记住的<br>一切——大脑的短期记忆与 LLM 的"工作台"</p>
+</header>
+
+<main class="container">
+
+  <!-- 一句话定义 -->
+  <section class="card def-card">
+    <div class="def-label">一句话定义</div>
+    <div class="def-text">
+      Context（上下文）是 LLM 在一次对话中<b>能"看见"的所有内容</b>，包括系统提示、用户输入、对话历史、工具返回值等所有塞进输入窗口的文本。
+    </div>
+  </section>
+
+  <!-- 个人解释（短期记忆类比） -->
+  <section class="card">
+    <h2><span class="icon">💡</span>个人解释：用"短期记忆"类比</h2>
+    <p>把你和 LLM 的对话想象成跟一个<b>记忆力只有几秒的朋友</b>协作：</p>
+    <div class="memory-grid">
+      <div class="box brain">
+        <h4>🧠 人类短期记忆</h4>
+        <p>容量有限（约 7±2 项），只能装"此刻你正在想的事"。一旦走神，前面的对话就"忘掉"了——必须别人复述一遍才能想起来。</p>
+      </div>
+      <div class="box llm">
+        <h4>🤖 LLM 的 Context 窗口</h4>
+        <p>容量以"token"计量（GPT-4o 约 128k，Claude 3.5 约 200k）。窗口外的旧内容<b>不是被"压缩"，而是从未被 LLM 看见</b>。</p>
+      </div>
+    </div>
+    <p style="margin-top:14px;"><b>关键相似</b>：两者都不是"长期仓库"，都是<b>当前这一次思考能用到的工作台</b>。</p>
+    <p><b>关键差异</b>：人是主动忘（注意力转移），LLM 是被动忘（窗口满了会截断更早的内容），但效果很相似——LLM 不知道被截掉的那段发生过。</p>
+  </section>
+
+  <!-- 核心机制 -->
+  <section class="card">
+    <h2><span class="icon">⚙️</span>核心机制</h2>
+    <p>Context 的工作原理三件事：</p>
+    <p><b>① 拼接 → ② 切分 token → ③ 注意力计算</b></p>
+
+    <div class="token-bar">
+      <div class="label">一个 Context 窗口内部大致长这样：</div>
+      <div class="bar">
+        <div class="seg sys" style="width:15%">系统</div>
+        <div class="seg usr" style="width:35%">用户历史</div>
+        <div class="seg tool" style="width:25%">工具返回</div>
+        <div class="seg usr" style="width:25%">本轮问题</div>
+      </div>
+      <div class="legend">
+        <span class="sys-c">系统提示（角色 / 规则）</span>
+        <span class="usr-c">对话消息（用户 + AI）</span>
+        <span class="tool-c">工具结果 / RAG 召回</span>
+      </div>
+    </div>
+
+    <p style="margin-top:14px;">
+      <b>三大要点</b>：
+    </p>
+    <p>1. <b>窗口有上限</b>：超出后被截断而非压缩；LLM 此时对被截断内容<b>完全无感知</b>。</p>
+    <p>2. <b>窗口内一切可见</b>：所有被塞进去的 token 都会被注意力机制读到，互相影响。</p>
+    <p>3. <b>顺序有讲究</b>：开头和结尾的内容（"首因 / 近因效应"）对模型影响最强，中间的内容容易"被忽略"。</p>
+
+    <p class="quote">Context 是 LLM 此刻的全部世界——世界之外，它一无所知。</p>
+  </section>
+
+  <!-- 具体应用场景 -->
+  <section class="card">
+    <h2><span class="icon">🌍</span>具体应用场景</h2>
+    <ul class="scenes">
+      <li><b>多轮对话</b>：把前面所有轮的消息都塞进 Context，AI 才能"记得"你之前说过什么</li>
+      <li><b>RAG（检索增强生成）</b>：先把你的问题去向量数据库检索，再把检索到的相关文档片段塞进 Context</li>
+      <li><b>工具调用 / Function Calling</b>：工具的返回值塞回 Context，让模型能基于真实数据继续推理</li>
+      <li><b>长文档摘要</b>：把整篇论文 / 合同塞进 Context，让模型基于全文总结</li>
+      <li><b>Few-shot 提示</b>：在 Context 里塞几个示例，让模型"看着例子学"然后再回答</li>
+      <li><b>系统提示（System Prompt）</b>：把角色设定、风格、禁忌都写在 Context 开头，约束后续输出</li>
+    </ul>
+  </section>
+
+  <!-- 易混淆点 / 边界 -->
+  <section class="card">
+    <h2><span class="icon">⚠️</span>易混淆点 / 边界</h2>
+
+    <div class="confusion-card">
+      <div class="q">❓ Context ≠ 训练数据</div>
+      <div class="a">训练数据是<b>毕业前学的</b>知识，Context 是<b>当下摆桌上的</b>资料。二者混淆会导致你期待"它应该知道"，但它其实从没在你这次对话里看到。</div>
+    </div>
+
+    <div class="confusion-card">
+      <div class="q">❓ Context Window 越大越好吗？</div>
+      <div class="a">不绝对。窗口越大，<b>推理成本↑、响应速度↓、"中间被忽略"的现象越明显</b>。GPT-4o 的 128k 和 Claude 的 200k 各有取舍，盲目塞满常常比精挑细选效果更差。</div>
+    </div>
+
+    <div class="confusion-card">
+      <div class="q">❓ Context 和 Memory 是一回事？</div>
+      <div class="a">不是。Context 是<b>每次请求都重新构造</b>的输入；Memory 是<b>跨会话持久化</b>的外部存储（向量库 / 摘要库 / 数据库）。AI 在新会话里"记得"你，是因为开发者把 Memory 又塞进了 Context。</div>
+    </div>
+
+    <div class="confusion-card">
+      <div class="q">❓ 为什么 AI 会"忘记"对话开头的内容？</div>
+      <div class="a">通常是<b>窗口溢出被截断</b>（最常见），或<b>注意力衰减</b>（距离当前位置太远，注意力权重变小）。修复思路：把关键信息挪到末尾、缩减对话、定期摘要压缩。</div>
+    </div>
+  </section>
+
+  <!-- 资料来源 -->
+  <section class="card">
+    <h2><span class="icon">📚</span>可核查的资料来源</h2>
+    <p style="font-size:14px; margin-bottom:10px;">以下链接可直接验证本文事实性陈述：</p>
+    <ul class="sources">
+      <li>
+        <a href="https://en.wikipedia.org/wiki/Large_language_model" target="_blank">Wikipedia: Large language model</a>
+        <div class="meta">关于 LLM 的基础定义、Transformer 与上下文窗口的百科条目</div>
+      </li>
+      <li>
+        <a href="https://platform.openai.com/docs/models" target="_blank">OpenAI: Models - Context Window 对照表</a>
+        <div class="meta">各模型当前上下文窗口大小的一手数据 — 厂商官方</div>
+      </li>
+      <li>
+        <a href="https://docs.anthropic.com/en/docs/build-with-claude/context-windows" target="_blank">Anthropic: Context Windows 官方说明</a>
+        <div class="meta">对"超长上下文会发生什么 / 怎么优化"的官方解答</div>
+      </li>
+      <li>
+        <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank">Lilian Weng: LLM Powered Autonomous Agents (2023)</a>
+        <div class="meta">把 Context / Memory / Tools 三者关系梳理清楚的高质量综述</div>
+      </li>
+      <li>
+        <a href="https://research.google/pubs/the-transformer-attention-is-all-you-need/" target="_blank">Google Research: Attention Is All You Need</a>
+        <div class="meta">Transformer 与注意力机制的原始论文（Context 机制的理论源头）</div>
+      </li>
+    </ul>
+
+    <div class="gen-note">
+      🛠️ <b>生成器标注</b>：本卡片由 Concept Learner（用户级 Skill）按统一流程生成，受众=零基础，输出格式=HTML，生成日期=2026-09-06。
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>📚 学习卡片 · bigdata-ai 配套笔记 · 系列第 ② 期 · 主题：LLM Context</p>
+  <p>上一期 → Agent ｜ 下一期 → Skill</p>
+</footer>
+
+</body>
+</html>
