@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>什么是 Agent？它与普通程序的本质区别</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f7fb;
+    --card: #ffffff;
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --primary-light: #eef2ff;
+    --accent: #0ea5e9;
+    --warm: #f59e0b;
+    --danger: #ef4444;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 4px 20px rgba(79, 70, 229, 0.08);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hero {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #0ea5e9 100%);
+    color: white; padding: 64px 24px 56px; text-align: center;
+  }
+  .hero .badge {
+    display: inline-block; background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.3); padding: 4px 14px;
+    border-radius: 999px; font-size: 13px; margin-bottom: 18px;
+    backdrop-filter: blur(8px);
+  }
+  .hero h1 { font-size: 38px; font-weight: 700; margin-bottom: 12px; letter-spacing: 0.5px; }
+  .hero .sub { font-size: 16px; opacity: 0.92; max-width: 700px; margin: 0 auto; }
+
+  .container { max-width: 880px; margin: -32px auto 64px; padding: 0 20px; }
+
+  .card {
+    background: var(--card); border-radius: 16px; padding: 32px;
+    margin-bottom: 22px; box-shadow: var(--shadow); border: 1px solid var(--border);
+  }
+  .card h2 {
+    font-size: 22px; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card h2 .icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px; background: var(--primary-light);
+  }
+  .card p { margin-bottom: 12px; color: #374151; }
+  .card p:last-child { margin-bottom: 0; }
+
+  .def-card {
+    background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%);
+    border: 1px solid #c7d2fe; padding: 28px 32px;
+  }
+  .def-card .def-label {
+    font-size: 13px; color: var(--primary); font-weight: 600;
+    letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .def-card .def-text { font-size: 19px; font-weight: 600; }
+
+  .analogy {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+  }
+  .analogy .box { padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+  .analogy .box.prog { background: #fef3c7; border-color: #fde68a; }
+  .analogy .box.agent { background: #d1fae5; border-color: #a7f3d0; }
+  .analogy .box h4 { margin-bottom: 8px; font-size: 16px; }
+  .analogy .box.prog h4 { color: #92400e; }
+  .analogy .box.agent h4 { color: #065f46; }
+  .analogy .box p { font-size: 14px; margin: 0; color: #374151; }
+  @media (max-width: 640px) { .analogy { grid-template-columns: 1fr; } }
+
+  .step-list {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px;
+  }
+  .step {
+    background: #fafbff; border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    padding: 14px 16px; border-radius: 8px;
+  }
+  .step .num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); color: white;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; margin-bottom: 6px;
+  }
+  .step .ttl { font-size: 14px; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; }
+  .step .desc { font-size: 13.5px; color: #374151; line-height: 1.6; }
+  @media (max-width: 720px) { .step-list { grid-template-columns: 1fr; } }
+
+  .compare-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+    margin-top: 8px; font-size: 14.5px;
+  }
+  .compare-table thead th { color: white; padding: 14px 16px; text-align: left; font-weight: 600; }
+  .compare-table thead th:nth-child(1) { background: var(--primary); }
+  .compare-table thead th:nth-child(2) { background: #f59e0b; }
+  .compare-table thead th:nth-child(3) { background: #10b981; }
+  .compare-table td { padding: 14px 16px; border-top: 1px solid var(--border); vertical-align: top; }
+  .compare-table td:first-child { font-weight: 600; background: #f9fafb; width: 22%; }
+  .compare-table tr:nth-child(even) td:not(:first-child) { background: #fafbff; }
+
+  .scenes { list-style: none; margin-top: 8px; }
+  .scenes li {
+    padding: 12px 0 12px 36px; position: relative;
+    border-bottom: 1px dashed var(--border);
+  }
+  .scenes li:last-child { border-bottom: none; }
+  .scenes li::before {
+    content: ""; position: absolute; left: 0; top: 18px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--primary-light); border: 2px solid var(--primary);
+  }
+  .scenes li::after {
+    content: ""; position: absolute; left: 9px; top: 24px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
+  }
+  .scenes b { color: var(--primary); }
+
+  .confusion-card {
+    background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px;
+    padding: 18px 22px; margin-bottom: 12px;
+  }
+  .confusion-card .q { font-weight: 700; color: #9a3412; margin-bottom: 6px; font-size: 15px; }
+  .confusion-card .a { font-size: 14px; color: #374151; }
+  .confusion-card .a b { color: var(--primary); }
+
+  .sources li {
+    list-style: none; padding: 10px 0 10px 28px; position: relative;
+    border-bottom: 1px dashed var(--border); font-size: 14px;
+  }
+  .sources li:last-child { border-bottom: none; }
+  .sources li::before { content: "🔗"; position: absolute; left: 0; top: 8px; }
+  .sources a { color: var(--primary); text-decoration: none; word-break: break-all; }
+  .sources a:hover { text-decoration: underline; }
+  .sources .meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+  .quote {
+    text-align: center; font-size: 17px; color: var(--primary); font-weight: 600;
+    padding: 18px 0 6px; border-top: 1px dashed var(--border); margin-top: 18px;
+  }
+  .gen-note {
+    background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+    border: 1px solid #c7d2fe; border-radius: 10px;
+    padding: 12px 18px; margin-top: 16px; font-size: 12.5px; color: #4f46e5;
+  }
+  .footer { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="badge">概念学习卡片 · 系列第 ① 期</div>
+  <h1>什么是 Agent？</h1>
+  <p class="sub">一节课搞懂"智能体"的核心概念，<br>以及它和普通程序到底有什么不一样</p>
+</header>
+
+<main class="container">
+
+  <!-- 一句话定义 -->
+  <section class="card def-card">
+    <div class="def-label">一句话定义</div>
+    <div class="def-text">
+      Agent（智能体）是一种<strong>能自主感知环境、做出决策、执行动作</strong>以达成目标的软件实体。
+    </div>
+  </section>
+
+  <!-- 个人解释（直觉理解） -->
+  <section class="card">
+    <h2><span class="icon">💡</span>个人解释</h2>
+    <p>普通程序是"被驱动的执行者"——你说一步它做一步；Agent 是"主动的行动者"——给它一个目标，它自己想办法完成。</p>
+    <p>两种类比帮助感受差别：</p>
+    <div class="analogy">
+      <div class="box prog">
+        <h4>🍳 普通程序像一张菜谱</h4>
+        <p>厨师必须严格按"第 1 步、第 2 步、第 3 步"执行，没有自主判断空间。</p>
+      </div>
+      <div class="box agent">
+        <h4>👨‍🍳 Agent 像一个有经验的厨师</h4>
+        <p>先看冰箱有什么（感知）、根据客人想吃什么（决策）、再动手做（执行）。</p>
+      </div>
+    </div>
+    <p style="margin-top:14px;"><strong>关键差异</strong>：普通程序只回答"怎么算"，Agent 要回答"该不该做、做什么、做不到怎么办"。</p>
+  </section>
+
+  <!-- 核心机制 -->
+  <section class="card">
+    <h2><span class="icon">⚙️</span>核心机制（一个闭环循环）</h2>
+    <p>Agent 的运行本质是一个 <b>感知 → 推理 → 行动</b> 的闭环，每跑完一轮就根据新状态再决策，常常会循环多次直到目标完成：</p>
+    <div class="step-list">
+      <div class="step">
+        <div class="num">1</div>
+        <div class="ttl">感知 Perception</div>
+        <div class="desc">读输入（用户消息、屏幕、传感器数据、工具返回值），把外部状态翻译成 Agent 可理解的内部表征。</div>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <div class="ttl">推理 Reasoning</div>
+        <div class="desc">基于当前状态 + 目标，调用大模型推理"下一步该怎么办"。常见做法：拆分任务、选择工具、判断是否要再观察。</div>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <div class="ttl">行动 Action</div>
+        <div class="desc">调用具体工具或回复用户。执行后，环境会产生新状态，整个循环回到第 1 步继续。</div>
+      </div>
+    </div>
+    <p style="margin-top:14px;">现代 LLM Agent 通常还引入 <b>记忆 Memory</b>（短期对话上下文 + 长期知识库）和 <b>工具 Tools</b>（搜索 / 代码 / 数据库 / API）。这两块补齐了"感知"和"行动"的能力上限。</p>
+    <p class="quote">Agent ＝ 大模型做大脑 ＋ 感知-推理-行动闭环 ＋ 记忆 ＋ 工具</p>
+  </section>
+
+  <!-- 具体应用场景 -->
+  <section class="card">
+    <h2><span class="icon">🌍</span>具体应用场景</h2>
+    <ul class="scenes">
+      <li><b>智能客服</b>：自动理解用户问题 → 检索知识库 → 必要时升级人工</li>
+      <li><b>个人助手</b>（Siri / 小爱同学）：听你说话 → 思考意图 → 调用手机功能执行</li>
+      <li><b>自动驾驶</b>：摄像头 / 雷达感知路况 → 决策加速 / 刹车 / 转向 → 控制车辆</li>
+      <li><b>游戏 NPC</b>：观察战况 → 选择策略 → 操控角色</li>
+      <li><b>自动化办公</b>：读邮件 → 判断紧急程度 → 自动回复或转交真人</li>
+      <li><b>研究助理</b>（Devin / AutoGPT 类）：读需求 → 拆解 → 写代码 / 跑测试 → 提交</li>
+    </ul>
+  </section>
+
+  <!-- 易混淆点 / 边界 -->
+  <section class="card">
+    <h2><span class="icon">⚠️</span>易混淆点 / 边界</h2>
+
+    <div class="confusion-card">
+      <div class="q">❓ Agent vs 普通程序到底差在哪？</div>
+      <div class="a">普通程序是<b>被驱动</b>的执行者（按预设逻辑跑）；Agent 是<b>被授权</b>的行动者（自己决定下一步）。最直观的区别：把网线拔了，普通程序继续跑、Agent 常常就停了，因为它在主动观察外部。</div>
+    </div>
+
+    <div class="confusion-card">
+      <div class="q">❓ Agent = 智能 = ChatGPT？</div>
+      <div class="a">ChatGPT 单轮问答是"被动响应"，严格说不是 Agent；给 ChatGPT 加上<b>循环</b>、<b>工具</b>、<b>记忆</b>，让它能自己决定何时停止，就变成 Agent。换句话说，<b>大模型是 Agent 的"大脑"</b>，Agent = 大脑 + 循环 + 工具 + 记忆。</div>
+    </div>
+
+    <div class="confusion-card">
+      <div class="q">❓ Agent 与 Skill / Prompt 的区别？</div>
+      <div class="a">Prompt 是告诉 AI "这一次怎么说"的指令；Skill 是把好的 Prompt + 工具配置打包成可复用积木；Agent 是会<b>自主决定用什么 Skill / 工具</b>的主体。三者关系：<b>Agent 指挥、Skill 干活、Prompt 是 Skill 的配方</b>。</div>
+    </div>
+
+    <div class="confusion-card">
+      <div class="q">❓ 所有 AI 软件都算 Agent 吗？</div>
+      <div class="a">不是。一个判断标准：<b>能否在没人类指令的情况下自主推进任务直到完成</b>。只做单次响应、必须人一步步指点的，不算 Agent；能拆任务、调用工具、跨多步达成目标的，才是 Agent。</div>
+    </div>
+  </section>
+
+  <!-- 资料来源 -->
+  <section class="card">
+    <h2><span class="icon">📚</span>可核查的资料来源</h2>
+    <p style="font-size:14px; margin-bottom:10px;">以下链接可直接验证本文事实性陈述：</p>
+    <ul class="sources">
+      <li>
+        <a href="https://en.wikipedia.org/wiki/Intelligent_agent" target="_blank">Wikipedia: Intelligent agent</a>
+        <div class="meta">智能体（Agent）经典定义：感知-决策-行动循环 — 权威百科</div>
+      </li>
+      <li>
+        <a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank">Lilian Weng: LLM Powered Autonomous Agents (2023)</a>
+        <div class="meta">详细解释 LLM Agent 的 Planning / Memory / Tool use 三组件 — 知名技术博客</div>
+      </li>
+      <li>
+        <a href="https://docs.anthropic.com/en/docs/agents/overview" target="_blank">Anthropic Docs: Building effective agents</a>
+        <div class="meta">官方对"Agent vs Workflow"边界的当代梳理 — 一手厂商文档</div>
+      </li>
+      <li>
+        <a href="https://www.sciencedirect.com/topics/computer-science/agent-based-modeling" target="_blank">ScienceDirect: Agent-based modeling 综述</a>
+        <div class="meta">学术综述视角下的 Agent 四大属性（自治 / 反应 / 主动 / 社会） — 学术参考</div>
+      </li>
+    </ul>
+
+    <div class="gen-note">
+      🛠️ <b>生成器标注</b>：本卡片由 Concept Learner（用户级 Skill）按统一流程生成，受众=零基础，输出格式=HTML，生成日期=2026-09-06。
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>📚 学习卡片 · bigdata-ai 配套笔记 · 系列第 ① 期 · 主题：Agent</p>
+  <p>下一期 → LLM Context（用短期记忆类比理解）</p>
+</footer>
+
+</body>
+</html>
